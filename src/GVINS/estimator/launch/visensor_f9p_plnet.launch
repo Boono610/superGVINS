@@ -1,0 +1,19 @@
+<launch>
+    <arg name="config_path" default = "$(find gvins)/../config/visensor_f9p/visensor_left_f9p_config.yaml" />
+	<arg name="gvins_path" default = "$(find gvins)/../" />
+    <arg name="plnet_config_path" default = "$(find gvins)/../config/plnet/vo_euroc.yaml" />
+    <arg name="model_dir" default = "$(find gvins)/../output" />
+    
+    <node name="gvins_feature_tracker_plnet_v1" pkg="gvins_feature_tracker_plnet_v1" type="gvins_feature_tracker_plnet_v1" output="screen">
+        <param name="config_file" type="string" value="$(arg config_path)" />
+        <param name="gvins_folder" type="string" value="$(arg gvins_path)" />
+        <param name="plnet_config_file" type="string" value="$(arg plnet_config_path)" />
+        <param name="model_dir" type="string" value="$(arg model_dir)" />
+    </node>
+
+    <node name="gvins" pkg="gvins" type="gvins" output="screen">
+       <param name="config_file" type="string" value="$(arg config_path)" />
+       <param name="gvins_folder" type="string" value="$(arg gvins_path)" />
+    </node>
+
+</launch>
