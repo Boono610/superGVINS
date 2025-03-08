@@ -5,6 +5,7 @@ PoseAnchorFactor::PoseAnchorFactor(const std::vector<double> anchor_value)
     for (int i = 0; i < 7; ++i)     _anchor_point(i) = anchor_value[i];
 }
 
+// 计算锚点参数的残差和雅可比矩阵
 bool PoseAnchorFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
 {
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> pose(parameters[0]);

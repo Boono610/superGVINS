@@ -148,7 +148,6 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
         int n_max_cnt = MAX_CNT - static_cast<int>(forw_pts.size());
         if (n_max_cnt > 0)
         {
-            // todo: 采用plnet做特征识别
             if(mask.empty())
                 cout << "mask is empty " << endl;
             if (mask.type() != CV_8UC1)

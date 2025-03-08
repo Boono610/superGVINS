@@ -1,5 +1,8 @@
 #include "initial_alignment.h"
 
+/**
+ * @brief 通过求解陀螺仪偏置，对陀螺仪偏置进行校准
+ */
 void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs)
 {
     Matrix3d A;
@@ -9,6 +12,7 @@ void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs)
     b.setZero();
     map<double, ImageFrame>::iterator frame_i;
     map<double, ImageFrame>::iterator frame_j;
+    // 遍历所有图像帧，计算雅可比矩阵 tmp_A 和误差向量 tmp_b，更新全局系数矩阵 A 和常数向量 b
     for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end(); frame_i++)
     {
         frame_j = next(frame_i);
@@ -23,12 +27,15 @@ void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs)
         b += tmp_A.transpose() * tmp_b;
 
     }
+    // 求解线性方程组，得到偏置增量 delta_bg
     delta_bg = A.ldlt().solve(b);
     ROS_WARN_STREAM("gyroscope bias initial calibration " << delta_bg.transpose());
 
+    // 更新偏置
     for (int i = 0; i <= WINDOW_SIZE; i++)
         Bgs[i] += delta_bg;
 
+    // 重新计算预积分
     for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end( ); frame_i++)
     {
         frame_j = next(frame_i);
@@ -122,6 +129,10 @@ void RefineGravity(map<double, ImageFrame> &all_image_frame, Vector3d &g, Vector
     g = g0;
 }
 
+/**
+ * @brief 通过最小化连续帧之间的位置和速度误差来估计初始的重力方向和尺度因子
+ * @param x 用于存储优化结果，包括重力方向和尺度因子
+ */
 bool LinearAlignment(map<double, ImageFrame> &all_image_frame, Vector3d &g, VectorXd &x)
 {
     int all_frame_count = all_image_frame.size();
@@ -177,15 +188,19 @@ bool LinearAlignment(map<double, ImageFrame> &all_image_frame, Vector3d &g, Vect
     A = A * 1000.0;
     b = b * 1000.0;
     x = A.ldlt().solve(b);
+
+    // 提取重力方向和尺度因子
     double s = x(n_state - 1) / 100.0;
     ROS_DEBUG("estimated scale: %f", s);
     g = x.segment<3>(n_state - 4);
     ROS_DEBUG_STREAM(" result g     " << g.norm() << " " << g.transpose());
+    // 检查重力方向的范数和尺度因子是否合理
     if(fabs(g.norm() - G.norm()) > 1.0 || s < 0)
     {
         return false;
     }
 
+    // 细化重力方向
     RefineGravity(all_image_frame, g, x);
     s = (x.tail<1>())(0) / 100.0;
     (x.tail<1>())(0) = s;
@@ -198,8 +213,10 @@ bool LinearAlignment(map<double, ImageFrame> &all_image_frame, Vector3d &g, Vect
 
 bool VisualIMUAlignment(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs, Vector3d &g, VectorXd &x)
 {
+    // 对陀螺仪偏置进行校准
     solveGyroscopeBias(all_image_frame, Bgs);
 
+    // 通过最小化连续帧之间的位置和速度误差来估计初始的重力方向和尺度因子
     if(LinearAlignment(all_image_frame, g, x))
         return true;
     else 

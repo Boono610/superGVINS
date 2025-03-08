@@ -127,6 +127,9 @@ void FeatureManager::debugShow()
     }
 }
 
+/**
+ * @brief 到在两个指定帧之间（开始帧小于左帧，结束帧大于右帧）存在对应关系的特征点，并返回这些对应点对
+ */
 vector<pair<Vector3d, Vector3d>> FeatureManager::getCorresponding(int frame_count_l, int frame_count_r)
 {
     vector<pair<Vector3d, Vector3d>> corres;
@@ -168,6 +171,9 @@ void FeatureManager::setDepth(const VectorXd &x)
     }
 }
 
+/**
+ * @brief 移除跟踪失败的特征点，即 solve_flag 为 2 的特征点，也即深度估计失败的特征点
+ */
 void FeatureManager::removeFailures()
 {
     for (auto it = feature.begin(), it_next = feature.begin();
@@ -179,6 +185,9 @@ void FeatureManager::removeFailures()
     }
 }
 
+/**
+ * @brief 根据输入的向量 x 更新所有特征点的深度信息
+ */
 void FeatureManager::clearDepth(const VectorXd &x)
 {
     int feature_index = -1;
@@ -200,17 +209,18 @@ VectorXd FeatureManager::getDepthVector()
         it_per_id.used_num = it_per_id.feature_per_frame.size();
         if (!(it_per_id.used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))
             continue;
+// 两种方式获取特征点的深度
 #if 1
-        dep_vec(++feature_index) = 1. / it_per_id.estimated_depth;
+        dep_vec(++feature_index) = 1. / it_per_id.estimated_depth; // 深度的倒数
 #else
-        dep_vec(++feature_index) = it_per_id->estimated_depth;
+        dep_vec(++feature_index) = it_per_id->estimated_depth;     // 深度
 #endif
     }
     return dep_vec;
 }
 
 /**
- * @brief 三角化特征点的深度
+ * @brief 三角化特征点的深度，更新特征点的深度(初次被观测到时的深度)
  */
 void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
 {
@@ -291,6 +301,9 @@ void FeatureManager::removeOutlier()
     }
 }
 
+/**
+ * @brief 更新所有特征点的起始帧和深度信息，并删除被移除帧的观测
+ */
 void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3d marg_P, Eigen::Matrix3d new_R, Eigen::Vector3d new_P)
 {
     for (auto it = feature.begin(), it_next = feature.begin();
@@ -303,17 +316,20 @@ void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3
         else
         {
             Eigen::Vector3d uv_i = it->feature_per_frame[0].point;  
+            // 移除特征点的第一个观测
             it->feature_per_frame.erase(it->feature_per_frame.begin());
+            // 如果特征点的观测次数小于 2，则移除特征点
             if (it->feature_per_frame.size() < 2)
             {
                 feature.erase(it);
                 continue;
             }
-            else
+            else // 否则，更新特征点的深度
             {
-                Eigen::Vector3d pts_i = uv_i * it->estimated_depth;
-                Eigen::Vector3d w_pts_i = marg_R * pts_i + marg_P;
-                Eigen::Vector3d pts_j = new_R.transpose() * (w_pts_i - new_P);
+                Eigen::Vector3d pts_i = uv_i * it->estimated_depth;     // 特征点在被移除帧的坐标
+                Eigen::Vector3d w_pts_i = marg_R * pts_i + marg_P;      // 特征点在世界坐标系下的坐标
+                Eigen::Vector3d pts_j = new_R.transpose() * (w_pts_i - new_P);  // 特征点在新首帧的坐标
+                // 更新特征点的深度
                 double dep_j = pts_j(2);
                 if (dep_j > 0)
                     it->estimated_depth = dep_j;
@@ -331,6 +347,9 @@ void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3
     }
 }
 
+/**
+ * @brief 更新所有特征点的起始帧，并删除被移除帧的观测
+ */
 void FeatureManager::removeBack()
 {
     for (auto it = feature.begin(), it_next = feature.begin();
@@ -349,6 +368,9 @@ void FeatureManager::removeBack()
     }
 }
 
+/**
+ * @brief 删除所有特征点的在第frame_count的观测，并更新特征点的起始帧
+ */
 void FeatureManager::removeFront(int frame_count)
 {
     for (auto it = feature.begin(), it_next = feature.begin(); it != feature.end(); it = it_next)

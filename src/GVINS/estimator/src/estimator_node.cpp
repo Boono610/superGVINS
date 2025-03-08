@@ -57,8 +57,12 @@ double tmp_last_feature_time;
 uint64_t feature_msg_counter;
 int skip_parameter;
 
+/**
+ * @brief 根据IMU数据，更新姿态tmp_Q、位置tmp_P、速度tmp_V、加速度acc_0和角速度gyr_0
+ */
 void predict(const sensor_msgs::ImuConstPtr &imu_msg)
 {
+    // 更新时间间隔和时间戳
     double t = imu_msg->header.stamp.toSec();
     if (init_imu)
     {
@@ -69,6 +73,7 @@ void predict(const sensor_msgs::ImuConstPtr &imu_msg)
     double dt = t - latest_time;
     latest_time = t;
 
+    // 读取 IMU 数据
     double dx = imu_msg->linear_acceleration.x;
     double dy = imu_msg->linear_acceleration.y;
     double dz = imu_msg->linear_acceleration.z;
@@ -79,6 +84,7 @@ void predict(const sensor_msgs::ImuConstPtr &imu_msg)
     double rz = imu_msg->angular_velocity.z;
     Eigen::Vector3d angular_velocity{rx, ry, rz};
 
+    // 修正加速度和角速度，更新姿态
     Eigen::Vector3d un_acc_0 = tmp_Q * (acc_0 - tmp_Ba) - estimator_ptr->g;
 
     Eigen::Vector3d un_gyr = 0.5 * (gyr_0 + angular_velocity) - tmp_Bg;
@@ -88,6 +94,7 @@ void predict(const sensor_msgs::ImuConstPtr &imu_msg)
 
     Eigen::Vector3d un_acc = 0.5 * (un_acc_0 + un_acc_1);
 
+    // 更新位置、速度、加速度和角速度
     tmp_P = tmp_P + dt * tmp_V + 0.5 * dt * dt * un_acc;
     tmp_V = tmp_V + dt * un_acc;
 
@@ -181,8 +188,12 @@ getMeasurements(std::vector<sensor_msgs::ImuConstPtr> &imu_msg, sensor_msgs::Poi
     return true;
 }
 
+/**
+ * @brief 将 IMU 数据存入缓存，并更新和发布里程计数据
+ */
 void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 {
+    // 时间戳检查及更新
     if (imu_msg->header.stamp.toSec() <= last_imu_t)
     {
         ROS_WARN("imu message in disorder!");
@@ -190,16 +201,19 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
     }
     last_imu_t = imu_msg->header.stamp.toSec();
 
+    // 将 IMU 数据存入缓存
     m_buf.lock();
     imu_buf.push(imu_msg);
     m_buf.unlock();
-    con.notify_one();
+    con.notify_one(); // 通知 process 函数
 
-    last_imu_t = imu_msg->header.stamp.toSec();
+    // last_imu_t = imu_msg->header.stamp.toSec();
 
     {
         std::lock_guard<std::mutex> lg(m_state);
+        // 预测
         predict(imu_msg);
+        // 发布最新的里程计数据
         std_msgs::Header header = imu_msg->header;
         header.frame_id = "world";
         if (estimator_ptr->solver_flag == Estimator::SolverFlag::NON_LINEAR)
@@ -228,6 +242,9 @@ void gnss_iono_params_callback(const StampedFloat64ArrayConstPtr &iono_msg)
     estimator_ptr->inputIonoParams(ts, iono_params);
 }
 
+/**
+ * @brief GNSS 数据回调函数，将 GNSS 数据存入缓存
+ */
 void gnss_meas_callback(const GnssMeasMsgConstPtr &meas_msg)
 {
     std::vector<ObsPtr> gnss_meas = msg2meas(meas_msg);
@@ -243,6 +260,9 @@ void gnss_meas_callback(const GnssMeasMsgConstPtr &meas_msg)
     con.notify_one();
 }
 
+/**
+ * @brief 对齐 GNSS 数据和图像数据的时间戳，根据时间戳差值决定是否将图像数据存入缓存
+ */
 void feature_callback(const sensor_msgs::PointCloudConstPtr &feature_msg)
 {
     ++ feature_msg_counter;
@@ -253,14 +273,15 @@ void feature_callback(const sensor_msgs::PointCloudConstPtr &feature_msg)
         if (latest_gnss_time > 0 && tmp_last_feature_time > 0)
         {
             if (abs(this_feature_ts - latest_gnss_time) > abs(tmp_last_feature_time - latest_gnss_time))
-                skip_parameter = feature_msg_counter%2;       // skip this frame and afterwards
+                skip_parameter = feature_msg_counter%2;       // 跳过当前帧
             else
-                skip_parameter = 1 - (feature_msg_counter%2);   // skip next frame and afterwards
+                skip_parameter = 1 - (feature_msg_counter%2);   // 跳过上一帧
         }
         // cerr << "feature counter is " << feature_msg_counter << ", skip parameter is " << int(skip_parameter) << endl;
         tmp_last_feature_time = this_feature_ts;
     }
 
+    // 根据 skip_parameter 决定是否将当前帧存入缓存
     if (skip_parameter >= 0 && int(feature_msg_counter%2) != skip_parameter)
     {
         m_buf.lock();
@@ -336,7 +357,7 @@ void process()
         sensor_msgs::PointCloudConstPtr img_msg;
         std::vector<ObsPtr> gnss_msg;
 
-        // 从缓存中获取 IMU（所有时间戳小于等于图像时间戳加延时的若干个）、图像（1张）、GNSS 数据（所有在图像时间戳的允许范围内的若干个）
+        // 从缓存中获取 IMU（所有时间戳小于等于图像时间戳加延时的若干个）、图像（1张）、GNSS 数据（某一个时刻多个卫星的数据）
         std::unique_lock<std::mutex> lk(m_buf);
         con.wait(lk, [&]
                  {
@@ -463,10 +484,10 @@ int main(int argc, char **argv)
     else
         skip_parameter = 0;
 
-    // todo
     ros::Subscriber sub_imu = n.subscribe(IMU_TOPIC, 2000, imu_callback, ros::TransportHints().tcpNoDelay());
-    ros::Subscriber sub_feature = n.subscribe("/gvins_feature_tracker_plnet_v1/feature", 2000, feature_callback);
-    ros::Subscriber sub_restart = n.subscribe("/gvins_feature_tracker_plnet_v1/restart", 2000, restart_callback);
+    ros::Subscriber sub_feature = n.subscribe("/gvins_feature_tracker/feature", 2000, feature_callback);
+    ros::Subscriber sub_restart = n.subscribe("/gvins_feature_tracker/restart", 2000, restart_callback);
+    // ros::Subscriber sub_line = n.subscribe("/gvins_feature_tracker/line", 2000, line_callback);
 
     ros::Subscriber sub_ephem, sub_glo_ephem, sub_gnss_meas, sub_gnss_iono_params;
     ros::Subscriber sub_gnss_time_pluse_info, sub_local_trigger_info;

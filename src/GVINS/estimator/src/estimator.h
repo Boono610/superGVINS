@@ -100,8 +100,8 @@ class Estimator
     Vector3d Bgs[(WINDOW_SIZE + 1)];  // 滑动窗口中每一帧的角速度偏置
     double td;  // 特征点的视差
 
-    Matrix3d back_R0, last_R, last_R0; // back_R0: 第一帧图像的旋转矩阵; last_R: 最后一帧图像的旋转矩阵; last_R0: 第一帧图像的旋转矩阵
-    Vector3d back_P0, last_P, last_P0; // back_P0: 第一帧图像的位置; last_P: 最后一帧图像的位置; last_P0: 第一帧图像的位置
+    Matrix3d back_R0, last_R, last_R0; // back_R0: 被移除的最早图像帧的旋转矩阵; last_R: 滑动窗口中最后一帧图像的旋转矩阵; last_R0: 被移除的最新图像帧的旋转矩阵
+    Vector3d back_P0, last_P, last_P0; // back_P0: 被移除的最早图像帧的位置; last_P: 滑动窗口中最后一帧图像的位置; last_P0: 被移除的最新图像帧的位置
     std_msgs::Header Headers[(WINDOW_SIZE + 1)]; // 滑动窗口中每一帧图像的头部信息
 
     IntegrationBase *pre_integrations[(WINDOW_SIZE + 1)]; // 滑动窗口中每一帧的预积分对象
@@ -156,7 +156,7 @@ class Estimator
     MarginalizationInfo *last_marginalization_info; // 上一次边缘化信息
     vector<double *> last_marginalization_parameter_blocks; // 上一次边缘化参数块
 
-    map<double, ImageFrame> all_image_frame; // 保存所有图像帧的特征点信息
+    map<double, ImageFrame> all_image_frame; // 保存滑动窗口内所有图像帧的特征点信息
     IntegrationBase *tmp_pre_integration; // 临时预积分对象
 
     bool first_optimization; // 是否是第一次优化

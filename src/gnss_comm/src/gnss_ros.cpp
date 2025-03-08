@@ -194,6 +194,9 @@ namespace gnss_comm
         return gnss_meas_msg;
     }
 
+    /**
+     * @brief 将 GNSS 数据消息转换为观测数据，包括多个卫星的观测数据
+     */
     std::vector<ObsPtr> msg2meas(const GnssMeasMsgConstPtr &gnss_meas_msg)
     {
         std::vector<ObsPtr> meas;
@@ -202,18 +205,18 @@ namespace gnss_comm
             GnssObsMsg obs_msg = gnss_meas_msg->meas[i];
             ObsPtr obs(new Obs());
             obs->time       = gpst2time(obs_msg.time.week, obs_msg.time.tow);
-            obs->sat        = obs_msg.sat;
-            obs->freqs      = obs_msg.freqs;
-            obs->CN0        = obs_msg.CN0;
-            obs->LLI        = obs_msg.LLI;
-            obs->code       = obs_msg.code;
-            obs->psr        = obs_msg.psr;
-            obs->psr_std    = obs_msg.psr_std;
-            obs->cp         = obs_msg.cp;
-            obs->cp_std     = obs_msg.cp_std;
-            obs->dopp       = obs_msg.dopp;
-            obs->dopp_std   = obs_msg.dopp_std;
-            obs->status     = obs_msg.status;
+            obs->sat        = obs_msg.sat;          // 卫星编号
+            obs->freqs      = obs_msg.freqs;        // 频率
+            obs->CN0        = obs_msg.CN0;          // 信噪比
+            obs->LLI        = obs_msg.LLI;          // 损失锁定指示
+            obs->code       = obs_msg.code;         // 伪距码
+            obs->psr        = obs_msg.psr;          // 伪距
+            obs->psr_std    = obs_msg.psr_std;      // 伪距标准差
+            obs->cp         = obs_msg.cp;           // 载波相位
+            obs->cp_std     = obs_msg.cp_std;       // 载波相位标准差
+            obs->dopp       = obs_msg.dopp;         // 多普勒频移
+            obs->dopp_std   = obs_msg.dopp_std;     // 多普勒频移标准差
+            obs->status     = obs_msg.status;       // 观测状态
             
             meas.push_back(obs);
         }

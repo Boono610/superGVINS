@@ -163,7 +163,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
             cv::goodFeaturesToTrack(forw_img, n_pts, MAX_CNT - forw_pts.size(), 0.01, MIN_DIST, mask);
             */
 
-            // todo: 采用plnet做特征识别，替代goodFeaturesToTrack
+            // 采用plnet做特征识别，替代goodFeaturesToTrack
             // std::cout << "Feature Detecting ..." << std::endl;
             Eigen::Matrix<float, 259, Eigen::Dynamic> features;
             feature_detector->Detect(forw_img, features);

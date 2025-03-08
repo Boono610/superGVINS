@@ -71,6 +71,7 @@ class MarginalizationInfo
 
 };
 
+// 用于边缘化的因子
 class MarginalizationFactor : public ceres::CostFunction
 {
   public:

@@ -17,7 +17,7 @@ struct SFMFeature
 {
     bool state;
     int id;
-    vector<pair<int,Vector2d>> observation;
+    vector<pair<int,Vector2d>> observation; // <frame_id, feature_point（2d）>
     double position[3];
     double depth;
 };

@@ -62,7 +62,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/Image
       Enabled: true
-      Image Topic: /cam1/image_raw
+      Image Topic: /camera/color/image_raw
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -74,7 +74,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/Image
       Enabled: true
-      Image Topic: /gvins_feature_tracker_plnet_v1/feature_img
+      Image Topic: /gvins_feature_tracker/feature_img
       Max Value: 1
       Median window: 5
       Min Value: 0

@@ -90,7 +90,7 @@ class FeatureManager
     void removeBack();
     void removeFront(int frame_count);
     void removeOutlier();
-    list<FeaturePerId> feature;
+    list<FeaturePerId> feature; // 滑动窗口内的特征点列表
     int last_track_num;
 
   private:
